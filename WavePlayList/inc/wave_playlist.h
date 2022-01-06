@@ -14,6 +14,7 @@
 char *filepaths[MAX_FILES];
 
 void file_tree_find_wavs(const char *dirpath);
+void sort_file_search_results();
 void file_show_search_results();
 static size_t filesFound();
 

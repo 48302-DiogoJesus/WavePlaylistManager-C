@@ -20,6 +20,8 @@ int main(int argc, char *argv[])
 
 	// Do initial wave file search starting at the /home folder
 	file_tree_find_wavs("../");
+	// Sort the filepaths
+	sort_file_search_results();
 	// Display search results to user
 	file_show_search_results();
 
@@ -87,7 +89,7 @@ Command *command_wait(const char *pre_message)
 	char *input = command_wait_valid_input(pre_message);
 
 	int new_command_index = commands_history_size();
-	printf("New index: %d\n", new_command_index);
+
 	if (new_command_index < MAX_COMMANDS_CACHE)
 	{
 		commands_history[new_command_index] = (char *)malloc(strlen(input) + 1);
@@ -198,6 +200,7 @@ void command_scan(char *args)
 	// First one is the home folder to be faster
 	const char *startDir = args == NULL ? "/home/" : args;
 	file_tree_find_wavs(startDir);
+	sort_file_search_results();
 	file_show_search_results();
 }
 
@@ -218,6 +221,7 @@ void command_add(char *args, Playlist *playlist)
 	if (index >= filesFound())
 	{
 		println("Invalid ID");
+		cursorYPos = 4;
 		return;
 	}
 	const char *filepath = filepaths[index];
@@ -767,31 +771,29 @@ void file_tree_find_wavs(const char *dirpath)
 			{
 				file_tree_find_wavs(filepath);
 			}
-			else
-			{
-				// MAKE SURE THIS ONLY RUNS ONCE. IN THE END OF THE SEARCH
-				printf("ONE\n");
-				// When search is done sort the filepaths alphabetically
-				size_t files_number = filesFound();
-
-				// Sort the filepaths using bubble sort
-				for (int i = 0; i < files_number; i++)
-				{
-					for (int j = i + 1; j < files_number; j++)
-					{
-						// char *filename = strrchr(filepath, '/') + 1;
-						if (strcmp(strrchr(filepaths[i], '/') + 1, strrchr(filepaths[j], '/') + 1) > 0)
-						{
-							char *temp = filepaths[i];
-							filepaths[i] = filepaths[j];
-							filepaths[j] = temp;
-						}
-					}
-				}
-			}
 		}
 		closedir(dir);
 	}
+}
+
+/*
+* Sort the files from the filepaths array alphabetically by filename
+*/
+void sort_file_search_results() {
+	size_t files_number = filesFound();
+
+	// Sort the filepaths using bubble sort
+	for (int i = 0; i < files_number; i++) {
+		for (int j = i+1; j < files_number; j++) {
+			// char *filename = strrchr(filepath, '/') + 1;
+			if (strcmp(strrchr(filepaths[i], '/') + 1, strrchr(filepaths[j], '/') + 1) > 0) {
+				char* temp = filepaths[i]; 
+				filepaths[i] = filepaths[j]; 
+				filepaths[j] = temp; 
+			}
+		}
+	}
+	return;
 }
 
 /**
