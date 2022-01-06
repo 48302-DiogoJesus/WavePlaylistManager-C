@@ -779,17 +779,21 @@ void file_tree_find_wavs(const char *dirpath)
 /*
 * Sort the files from the filepaths array alphabetically by filename
 */
-void sort_file_search_results() {
+void sort_file_search_results()
+{
 	size_t files_number = filesFound();
 
 	// Sort the filepaths using bubble sort
-	for (int i = 0; i < files_number; i++) {
-		for (int j = i+1; j < files_number; j++) {
+	for (int i = 0; i < files_number; i++)
+	{
+		for (int j = i + 1; j < files_number; j++)
+		{
 			// char *filename = strrchr(filepath, '/') + 1;
-			if (strcmp(strrchr(filepaths[i], '/') + 1, strrchr(filepaths[j], '/') + 1) > 0) {
-				char* temp = filepaths[i]; 
-				filepaths[i] = filepaths[j]; 
-				filepaths[j] = temp; 
+			if (strcmp(strrchr(filepaths[i], '/') + 1, strrchr(filepaths[j], '/') + 1) > 0)
+			{
+				char *temp = filepaths[i];
+				filepaths[i] = filepaths[j];
+				filepaths[j] = temp;
 			}
 		}
 	}
