@@ -10,6 +10,17 @@ BUILD = ./build/
 
 INC = ./inc/
 
+####### STATIC LINKING SINGLE COMMAND #######
+# 1 - Create wave_dump.o and wavelib_static.o | 2 - Create Library | 3 - Link library with wave_dump.o
+static_linking_complete:
+	make wave_dump.o && make wavelib_static.o && make lib_wavelib_static.a && make static_linking && make clean_objects && make
+
+####### DYNAMIC LINKING SINGLE COMMAND #######
+# 1 - Create wave_dump.o and wavelib_static_dynamic.o | 2 - Create Library | 3 - Link library with wave_dump.o | 4 - Add dynamic library to global libraries folder
+dynamic_linking_complete:
+	make wave_dump.o && make wavelib_dynamic.o && make lib_wavelib_dynamic.so && make dynamic_linking && make clean_objects && cp $(LIBS)lib_wavelib_dynamic.so /lib/
+
+
 ####### CREATE OBJECTS #######
 # CREATE OBJECT FROM "WAVE_DUMP.c"
 wave_dump.o: wave_dump.c
@@ -41,17 +52,6 @@ static_linking: $(BUILD)wave_dump.o $(LIBS)lib_wavelib_static.a
 # LINK TO DYNAMIC LIBRARY #
 dynamic_linking: $(BUILD)wave_dump.o $(LIBS)lib_wavelib_dynamic.so
 	$(CC) $(CFLAGS) $< -o wave_dump -L. $(LIBS)lib_wavelib_dynamic.so
-
-
-####### STATIC LINKING SINGLE COMMAND #######
-# 1 - Create wave_dump.o and wavelib_static.o | 2 - Create Library | 3 - Link library with wave_dump.o
-static_linking_complete:
-	make wave_dump.o && make wavelib_static.o && make lib_wavelib_static.a && make static_linking && make clean_objects && make
-
-####### DYNAMIC LINKING SINGLE COMMAND #######
-# 1 - Create wave_dump.o and wavelib_static_dynamic.o | 2 - Create Library | 3 - Link library with wave_dump.o | 4 - Add dynamic library to global libraries folder
-dynamic_linking_complete:
-	make wave_dump.o && make wavelib_dynamic.o && make lib_wavelib_dynamic.so && make dynamic_linking && make clean_objects && cp $(LIBS)lib_wavelib_dynamic.so /lib/
 
 
 ####### CLEAN COMMANDS #######

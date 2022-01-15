@@ -6,9 +6,12 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <dirent.h>
+
 #include <alsa/asoundlib.h>
 
 #include "wavelib.h"
+
+#include "console.h"
 
 #include "wave_playlist.h"
 
@@ -16,12 +19,12 @@
 
 int main(int argc, char *argv[])
 {
-	clear_screen();
+	console_init();
+
+	console->clear();
 
 	// Do initial wave file search starting at the /home folder
 	file_tree_find_wavs("../");
-	// Sort the filepaths
-	sort_file_search_results();
 	// Display search results to user
 	file_show_search_results();
 
@@ -34,11 +37,23 @@ int main(int argc, char *argv[])
 		// Capture command
 		Command *command = command_wait(">");
 
-		clear_screen();
+		console->clear();
 
 		// Handle Command
 		if (command != NULL)
 			command_execute(playlist, command);
+	}
+}
+
+int is_valid_pointer(void *pointer, int closeIfNull) {
+	if (pointer == NULL) {
+		console->printString("Out of memory!");
+		if (closeIfNull) {
+			// Code to safely close the App
+		}
+		return 1;
+	} else {
+		return 0;
 	}
 }
 
@@ -70,12 +85,6 @@ void commands_free_history()
 	}
 }
 
-// Simple print function that adds a newline at the end
-void println(const char *message)
-{
-	printf("%s\n", message);
-}
-
 /**
 * Waits for valid user input so that it can build a Command object
 * @param pre_message Pointer to the playlist object
@@ -93,10 +102,13 @@ Command *command_wait(const char *pre_message)
 	if (new_command_index < MAX_COMMANDS_CACHE)
 	{
 		commands_history[new_command_index] = (char *)malloc(strlen(input) + 1);
+		is_valid_pointer(commands_history[new_command_index], 1);
+		
 		strcpy(commands_history[new_command_index], input);
 	}
 
 	Command *newCommand = malloc(sizeof(Command));
+	is_valid_pointer(newCommand, 1);
 
 	/*
 	* newCommand->instruction uses the original pointer whose memory was allocated
@@ -122,7 +134,7 @@ void command_execute(Playlist *playlist, Command *command)
 	if (strcmp(instruction, "help") == 0)
 	{
 		command_help(args);
-		cursorYPos = 15;
+		console->cursorYPos = 15;
 	}
 	else if (strcmp(instruction, "playlist") == 0)
 	{
@@ -155,12 +167,12 @@ void command_execute(Playlist *playlist, Command *command)
 		free(command->instruction);
 		// Free the Command(2 pointer structure)
 		free(command);
-		command_exit(playlist);
+		exitApp(playlist);
 	}
 	else
 	{
-		println("Unexisting command");
-		cursorYPos = 4;
+		console->printString("Unexisting command");
+		console->cursorYPos = 4;
 	}
 	// Free the pointer initialized when getting user input
 	free(command->instruction);
@@ -175,7 +187,7 @@ void command_execute(Playlist *playlist, Command *command)
 */
 void command_help()
 {
-	println(
+	console->printString(
 		"|| -- COMMANDS LIST -- |\n\n"
 		"? - Opcional parameter\n\n"
 		"help              -> Show this helper\n"
@@ -185,7 +197,7 @@ void command_help()
 		"add <file_id>     -> Add a file(<file_id> from list displayed when the command files is executed) to the playlist\n"
 		"rm  <playlist_id> -> Remove a file(<playlist_id> from list displayed when the command playlist is executed) from the playlist. 'rm *' removes all\n"
 		"play              -> Start playing the files on the playlist by order of insertion\n"
-		"exit              -> Safely shutdown the program");
+		"exit              -> Safely shutdown the application");
 }
 
 /**
@@ -200,7 +212,6 @@ void command_scan(char *args)
 	// First one is the home folder to be faster
 	const char *startDir = args == NULL ? "/home/" : args;
 	file_tree_find_wavs(startDir);
-	sort_file_search_results();
 	file_show_search_results();
 }
 
@@ -213,27 +224,28 @@ void command_add(char *args, Playlist *playlist)
 {
 	if (args == NULL)
 	{
-		println("You need to specify the file ID. Ex: add 1\nUse the command 'files' to see all the possible IDs");
-		cursorYPos = 5;
+		console->printString("You need to specify the file ID. Ex: add 1\nUse the command 'files' to see all the possible IDs");
+		console->cursorYPos = 5;
 		return;
 	}
 	size_t index = atoi(args) - 1;
 	if (index >= filesFound())
 	{
-		println("Invalid ID");
-		cursorYPos = 4;
+		console->printString("Invalid ID");
+		console->cursorYPos = 4;
 		return;
 	}
 	const char *filepath = filepaths[index];
 	// Allocate space for new Wave file memory representation
 	Wave *loadedWave = (Wave *)malloc(sizeof(Wave));
+	is_valid_pointer(loadedWave, 1);
 	loadedWave = wave_load(filepath);
 
 	if (playlist_add(playlist, loadedWave))
-		println("Successfuly added to playlist");
+		console->printString("Successfuly added to playlist");
 	else
-		println("Could not add to playlist!");
-	cursorYPos = 4;
+		console->printString("Could not add to playlist!");
+	console->cursorYPos = 4;
 }
 
 /**
@@ -245,8 +257,8 @@ void command_remove(char *args, Playlist *playlist)
 {
 	if (args == NULL || strlen(args) == 0)
 	{
-		println("You need to specify the ID(to remove one) or '*'(to remove all).\nUse the command 'playlist' to see add the possible IDs.");
-		cursorYPos = 5;
+		console->printString("You need to specify the ID(to remove one) or '*'(to remove all).\nUse the command 'playlist' to see add the possible IDs.");
+		console->cursorYPos = 5;
 		return;
 	}
 	else if (strcmp(args, "*") == 0)
@@ -254,13 +266,13 @@ void command_remove(char *args, Playlist *playlist)
 		// Remove all
 		if (playlist_wipe(playlist))
 		{
-			println("All removed from playlist");
+			console->printString("All removed from playlist");
 		}
 		else
 		{
-			println("Playlist is empty!");
+			console->printString("Playlist is empty!");
 		}
-		cursorYPos = 4;
+		console->cursorYPos = 4;
 	}
 	else
 	{
@@ -268,15 +280,15 @@ void command_remove(char *args, Playlist *playlist)
 		size_t index = atoi(args) - 1;
 		if (index < 0 || index > playlist_size(playlist) - 1)
 		{
-			println("Invalid ID");
-			cursorYPos = 4;
+			console->printString("Invalid ID");
+			console->cursorYPos = 4;
 			return;
 		}
 		if (playlist_remove(playlist, index))
-			println("Successfuly removed from playlist");
+			console->printString("Successfuly removed from playlist");
 		else
-			println("Could not remove from playlist");
-		cursorYPos = 4;
+			console->printString("Could not remove from playlist");
+		console->cursorYPos = 4;
 		return;
 	}
 }
@@ -287,8 +299,8 @@ void command_remove(char *args, Playlist *playlist)
 */
 void command_play(Playlist *playlist)
 {
-	println("Started Playing...");
-	cursorYPos = 999;
+	console->printString("Started Playing...");
+	console->cursorYPos = 999;
 	// While there are songs in the playlist
 	while (playlist_size(playlist) > 0)
 	{
@@ -305,49 +317,14 @@ void command_play(Playlist *playlist)
 * Exit the program safely by freeing memory allocated during the program execution
 * @param playlist Pointer to playlist object
 */
-void command_exit(Playlist *playlist)
+void exitApp(Playlist *playlist)
 {
-	println("\nReleasing Memory Allocated for the commands history...\n");
+	console->printString("\nReleasing Memory Allocated for the commands history...\n");
 	commands_free_history();
-	println("Releasing Memory Allocated for the Playlist...\n");
+	console->printString("Releasing Memory Allocated for the Playlist...\n");
 	playlist_destroy(playlist);
-	println("Exiting...\n");
+	console->printString("Exiting...\n");
 	exit(0);
-}
-
-/*
-* Capture a key press(1 keycode) from stdin or a key combo(3 keycodes) (Ex: Arrows)
-*/
-int *command_get_char()
-{
-	// Will hold 1 or 3 chars (1 if single key; 3 if key combo)
-	int *buffer = (int *)calloc(3, 1);
-	// Set terminal mode to raw
-	system("/bin/stty raw");
-	int ch;
-	int counter = 0;
-	while (1)
-	{
-		ch = getchar();
-		if ((counter == 0 && ch == 27) || (counter == 1 && ch == 91) || counter == 2)
-		{
-			buffer[counter++] = ch;
-		}
-		else
-		{
-			buffer[0] = ch;
-			break;
-		}
-		if (counter == 3)
-		{
-			break;
-		}
-	}
-	// Restore terminal mode
-	system("/bin/stty cooked");
-	clear_line();
-	// Clear current line
-	return buffer;
 }
 
 /**
@@ -361,7 +338,7 @@ int *command_get_char()
 char *command_wait_valid_input(const char *pre_message)
 {
 	char *input = (char *)calloc(1, MAX_INPUT_SIZE);
-	int cursorXPos = 3;
+	console->cursorXPos = 3;
 	int current_commands_history_size = commands_history_size();
 	int commandsCacheIndex = current_commands_history_size == 0 ? 0 : current_commands_history_size - 1;
 	putchar('\n');
@@ -369,8 +346,8 @@ char *command_wait_valid_input(const char *pre_message)
 	{
 		printf("%s %s", pre_message, input);
 		// Put cursor at the bottom
-		gotoxy(cursorXPos, cursorYPos - 1);
-		int *key = command_get_char();
+		console->forceCursorTo(console->cursorXPos, console->cursorYPos - 1);
+		int *key = console->get_keycode();
 		// printf("\nKey:  %d %d %d\n", key[0], key[1], key[2]);
 		if (key[1] != 0)
 		{
@@ -381,15 +358,15 @@ char *command_wait_valid_input(const char *pre_message)
 				switch (key[2])
 				{
 				case 68:
-					if (cursorXPos > 3)
+					if (console->cursorXPos > 3)
 					{
-						cursorXPos--;
+						console->cursorXPos--;
 					}
 					break;
 				case 67:
-					if (cursorXPos - 3 < strlen(input))
+					if (console->cursorXPos - 3 < strlen(input))
 					{
-						cursorXPos++;
+						console->cursorXPos++;
 					}
 					break;
 				case 65:
@@ -398,7 +375,7 @@ char *command_wait_valid_input(const char *pre_message)
 						strcpy(input, commands_history[commandsCacheIndex]);
 						if (commandsCacheIndex - 1 >= 0)
 							commandsCacheIndex--;
-						cursorXPos = strlen(input) + 3;
+						console->cursorXPos = strlen(input) + 3;
 					}
 					break;
 				case 66:
@@ -409,11 +386,11 @@ char *command_wait_valid_input(const char *pre_message)
 						if (commandsCacheIndex + 1 == current_commands_history_size)
 						{
 							strcpy(input, "");
-							cursorXPos = 3;
+							console->cursorXPos = 3;
 							break;
 						}
 						strcpy(input, commands_history[++commandsCacheIndex]);
-						cursorXPos = strlen(input) + 3;
+						console->cursorXPos = strlen(input) + 3;
 					}
 					break;
 				}
@@ -424,15 +401,15 @@ char *command_wait_valid_input(const char *pre_message)
 		{
 			if (key[0] == 127)
 			{
-				if (cursorXPos - 3 > 0)
+				if (console->cursorXPos - 3 > 0)
 				{
 					// Backspace
 					int prevLen = strlen(input);
-					input[--cursorXPos - 3] = '\0';
-					if (cursorXPos - 2 < prevLen)
+					input[--console->cursorXPos - 3] = '\0';
+					if (console->cursorXPos - 2 < prevLen)
 					{
 						// Shift the right side 1 to the left
-						memcpy(input + cursorXPos - 3, input + cursorXPos - 2, strlen(input + cursorXPos - 2));
+						memcpy(input + console->cursorXPos - 3, input + console->cursorXPos - 2, strlen(input + console->cursorXPos - 2));
 						input[strlen(input) - 1] = '\0';
 					}
 				}
@@ -441,21 +418,21 @@ char *command_wait_valid_input(const char *pre_message)
 			{
 				// Delete
 				int prevLen = strlen(input);
-				input[--cursorXPos - 2] = '\0';
-				if (cursorXPos - 1 < prevLen)
+				input[--console->cursorXPos - 2] = '\0';
+				if (console->cursorXPos - 1 < prevLen)
 				{
 					// Shift the right side 1 to the left
-					memmove(input + cursorXPos - 2, input + cursorXPos - 1, strlen(input + cursorXPos - 1));
+					memmove(input + console->cursorXPos - 2, input + console->cursorXPos - 1, strlen(input + console->cursorXPos - 1));
 					input[strlen(input) - 1] = '\0';
 				}
-				cursorXPos++;
+				console->cursorXPos++;
 			}
 			else if (key[0] == 32)
 			{
 				// Space
-				memmove(input + cursorXPos - 2, input + cursorXPos - 3, strlen(input + cursorXPos - 3));
-				input[cursorXPos - 3] = 32;
-				cursorXPos++;
+				memmove(input + console->cursorXPos - 2, input + console->cursorXPos - 3, strlen(input + console->cursorXPos - 3));
+				input[console->cursorXPos - 3] = 32;
+				console->cursorXPos++;
 			}
 			else if (key[0] == 13)
 			{
@@ -466,11 +443,11 @@ char *command_wait_valid_input(const char *pre_message)
 				* If user types a command in which the first or last chars are Spaces 
 				* reset the input field  
 				*/
-				if (input[0] == 32 || input[(cursorXPos - 4) == -1 ? 0 : (cursorXPos - 4)] == 32)
+				if (input[0] == 32 || input[(console->cursorXPos - 4) == -1 ? 0 : (console->cursorXPos - 4)] == 32)
 				{
 					// Reset current input
 					input = (char *)calloc(1, MAX_INPUT_SIZE);
-					cursorXPos = 3;
+					console->cursorXPos = 3;
 					continue;
 				}
 				return input;
@@ -484,13 +461,13 @@ char *command_wait_valid_input(const char *pre_message)
 			{
 				// Non-special key (at the end, beggining or middle)
 				// If cursor is not at the end
-				if (strlen(input) > cursorXPos - 3)
+				if (strlen(input) > console->cursorXPos - 3)
 				{
 					// When replacing in the beggining doesnt work properly
-					memmove(input + cursorXPos - 2, input + cursorXPos - 3, strlen(input + cursorXPos - 3));
+					memmove(input + console->cursorXPos - 2, input + console->cursorXPos - 3, strlen(input + console->cursorXPos - 3));
 				}
 				// Append Character
-				input[cursorXPos++ - 3] = key[0];
+				input[console->cursorXPos++ - 3] = key[0];
 			}
 		}
 	}
@@ -507,6 +484,7 @@ Playlist *playlist_init()
 {
 	// Allocate space for new playlist
 	Playlist *newPlaylist = (Playlist *)malloc(sizeof(Playlist));
+	is_valid_pointer(newPlaylist, 1);
 	newPlaylist->size = 0;
 	return newPlaylist;
 }
@@ -530,6 +508,7 @@ size_t playlist_size(Playlist *playlist)
 int playlist_add(Playlist *playlist, Wave *wave)
 {
 	QueueItem *newQueueItem = (QueueItem *)malloc(sizeof(QueueItem));
+	is_valid_pointer(newQueueItem, 1);
 	newQueueItem->wave = wave;
 
 	// Special case for the first in the playlist
@@ -656,6 +635,7 @@ int playlist_wipe(Playlist *playlist)
  */
 void playlist_destroy(Playlist *playlist)
 {
+	// ! WHY NOT WIPE? ERROR? UNCOMMENT ANDD TRY
 	// playlist_wipe(playlist);
 	free(playlist);
 }
@@ -677,7 +657,7 @@ void playlist_print(Playlist *playlist)
 	{
 		printf("%d) %s\n", i + 1, strrchr(current->wave->filename, '/') + 1);
 	}
-	cursorYPos = (current_playlist_size < 2 ? 0 : current_playlist_size - 1) + 6;
+	console->cursorYPos = (current_playlist_size < 2 ? 0 : current_playlist_size - 1) + 6;
 }
 
 /* ------------- WAV FILE SEARCH ------------- */
@@ -756,6 +736,8 @@ void file_tree_find_wavs(const char *dirpath)
 			{
 				size_t next_index = filesFound();
 				char *string = malloc(strlen(filepath) + 1);
+				is_valid_pointer(string, 1);
+
 				strcpy(string, filepath);
 				filepaths[next_index] = string;
 			}
@@ -797,22 +779,22 @@ void sort_file_search_results()
 			}
 		}
 	}
-	return;
 }
 
 /**
-* Display file search results to user in a "friendly" way
+* Display file search results to console
 */
 void file_show_search_results()
 {
+	// Sort the filepaths
+	sort_file_search_results();
 	size_t files_number = filesFound();
 	printf("| -- SEARCH RESULTS -- |\n\n-Results no: %ld\n-Sorted: alphabetically\n-Pattern: \"%s\"\n\n", files_number, "*.wav");
 	for (int i = 0; i < files_number; i++)
 	{
 		printf("%d) %s\n", i + 1, strrchr(filepaths[i], '/') + 1);
 	}
-	cursorYPos = files_number + 9;
-	return;
+	console->cursorYPos = files_number + 9;
 }
 
 /* ------------- WAV PLAY MANIPULATIONS ------------- */
@@ -874,5 +856,4 @@ void play(Wave *wave) {
 
 	snd_pcm_close(handle);
 	snd_config_update_free_global();
-}
-*/
+}*/

@@ -15,7 +15,7 @@ char *filepaths[MAX_FILES];
 
 void file_tree_find_wavs(const char *dirpath);
 void sort_file_search_results();
-void file_show_search_results();
+void file_show_search_results();                      
 static size_t filesFound();
 
 /* ---------- PLAYLIST ---------- */
@@ -51,14 +51,8 @@ typedef struct command {
     char *args;
 } Command;
 
-#define MAX_INPUT_SIZE 100
 #define MAX_COMMANDS_CACHE 100
-
-#define gotoxy(x,y) printf("\033[%d;%dH", (y), (x))
-#define clear_line() printf("\33[2K\r")
-#define clear_screen() printf("\e[1;1H\e[2J")
-
-int cursorYPos = 0;
+#define MAX_INPUT_SIZE 100
 
 int *command_get_char();
 char *command_wait_valid_input(const char *pre_message);
@@ -71,9 +65,9 @@ void command_scan(char *args);
 void command_add(char *args, Playlist *playlist);
 void command_remove(char *args, Playlist *playlist);
 void command_play(Playlist *playlist);
-void command_exit(Playlist *playlist);
 void commands_free_history();
 int commands_history_size();
+void exitApp(Playlist *playlist);
 
 char *commands_history[MAX_COMMANDS_CACHE];
 

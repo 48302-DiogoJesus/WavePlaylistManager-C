@@ -10,6 +10,17 @@ BUILD = ./build/
 
 INC = ./inc/
 
+
+####### STATIC LINKING SINGLE COMMAND #######
+# 1 - Create prog_teste.o and file_tree_foreach_static.o | 2 - Create Library | 3 - Link library with prog_teste.o
+static_linking_complete:
+	make prog_teste.o && make file_tree_foreach_static.o && make lib_file_tree_foreach_static.a && make static_linking
+
+####### DYNAMIC LINKING SINGLE COMMAND #######
+# 1 - Create prog_teste.o and file_tree_foreach_dynamic.o | 2 - Create Library | 3 - Link library with prog_teste.o | 4 - Add dynamic library to global libraries folder
+dynamic_linking_complete:
+	make prog_teste.o && make file_tree_foreach_dynamic.o && make lib_file_tree_foreach_dynamic.so && make dynamic_linking && cp $(LIBS)lib_file_tree_foreach_dynamic.so /lib/
+
 ####### CREATE OBJECTS #######
 
 # CREATE OBJECT FROM "PROG_TESTE"
@@ -43,17 +54,6 @@ static_linking: $(BUILD)prog_teste.o $(LIBS)lib_file_tree_foreach_static.a
 # LINK TO DYNAMIC LIBRARY #
 dynamic_linking: prog_teste.c $(LIBS)lib_file_tree_foreach_dynamic.so
 	$(CC) $(CFLAGS) $< -o prog_teste -L. $(LIBS)lib_file_tree_foreach_dynamic.so -I $(INC)
-
-####### STATIC LINKING SINGLE COMMAND #######
-# 1 - Create prog_teste.o and file_tree_foreach_static.o | 2 - Create Library | 3 - Link library with prog_teste.o
-static_linking_complete:
-	make prog_teste.o && make file_tree_foreach_static.o && make lib_file_tree_foreach_static.a && make static_linking
-
-####### DYNAMIC LINKING SINGLE COMMAND #######
-# 1 - Create prog_teste.o and file_tree_foreach_dynamic.o | 2 - Create Library | 3 - Link library with prog_teste.o | 4 - Add dynamic library to global libraries folder
-dynamic_linking_complete:
-	make prog_teste.o && make file_tree_foreach_dynamic.o && make lib_file_tree_foreach_dynamic.so && make dynamic_linking && cp $(LIBS)lib_file_tree_foreach_dynamic.so /lib/
-
 
 ####### CLEAN COMMANDS #######
 clean: 

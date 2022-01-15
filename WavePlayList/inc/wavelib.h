@@ -1,6 +1,9 @@
 #ifndef WAVELIB
 #define WAVELIB
 
+#include <stddef.h>
+#include <stdint.h>
+
 typedef struct wave {
     const char *filename;
     uint8_t *data;
