@@ -13,12 +13,12 @@ INC = ./inc/
 ####### STATIC LINKING SINGLE COMMAND #######
 # 1 - Create wave_dump.o and wavelib_static.o | 2 - Create Library | 3 - Link library with wave_dump.o
 static_linking_complete:
-	make wave_dump.o && make wavelib_static.o && make lib_wavelib_static.a && make static_linking && make clean_objects && make
+	make wave_dump.o && make wavelib_static.o && make lib_wavelib_static.a && make static_linking
 
 ####### DYNAMIC LINKING SINGLE COMMAND #######
 # 1 - Create wave_dump.o and wavelib_static_dynamic.o | 2 - Create Library | 3 - Link library with wave_dump.o | 4 - Add dynamic library to global libraries folder
 dynamic_linking_complete:
-	make wave_dump.o && make wavelib_dynamic.o && make lib_wavelib_dynamic.so && make dynamic_linking && make clean_objects && cp $(LIBS)lib_wavelib_dynamic.so /lib/
+	make wave_dump.o && make wavelib_dynamic.o && make lib_wavelib_dynamic.so && make dynamic_linking && cp $(LIBS)lib_wavelib_dynamic.so /lib/
 
 
 ####### CREATE OBJECTS #######
@@ -35,14 +35,13 @@ wavelib_dynamic.o: $(SRC)wavelib.c
 
 
 ####### CREATE LIBRARIES #######
-# CREATE STATIC LIBRARY #
-lib_wavelib_static.a: $(BUILD)wavelib_static.o
-	$(CC) $(CFLAGS) -c $(SRC)wavelib.c -o $< -I $(INC) && ar cr $(LIBS)$@ $<
-
 # CREATE DYNAMIC LIBRARY #
 lib_wavelib_dynamic.so: $(BUILD)wavelib_dynamic.o
 	$(CC) $(CFLAGS) -c -fpic $(SRC)wavelib.c -o $< -I $(INC) && $(CC) $(CFLAGS) -shared -o $(LIBS)$@ $<
 
+# CREATE STATIC LIBRARY #
+lib_wavelib_static.a: $(BUILD)wavelib_static.o
+	$(CC) $(CFLAGS) -c $(SRC)wavelib.c -o $< -I $(INC) && ar cr $(LIBS)$@ $<
 
 ####### LINK "wave_dump.o" TO LIBRARIES #######
 # LINK TO STATIC LIBRARY #

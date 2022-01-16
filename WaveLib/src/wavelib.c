@@ -36,12 +36,16 @@ Wave *wave_load(const char* filename) {
     new_wave->filepath = filename;
 
     // Calculate file Data size to allocate memory for it
-    int data_size = wave_get_data_size(new_wave);
-    new_wave->data = (uint8_t *)malloc(data_size);
+    size_t data_size = wave_get_data_size(new_wave);
+
+    new_wave->data_size = data_size;
+
+    new_wave->data = (uint8_t *)calloc(1, data_size);
+
     // Copy all the file Data to a buffer (new_wave->data)
     const int dataOffset = 44;  // Header Size
     wav_read_bytes(new_wave->filepath, dataOffset, data_size, new_wave->data);
-
+    
     return new_wave;
 }
 
@@ -99,7 +103,7 @@ int wave_get_sample_rate(Wave *wave) {
 */
 size_t wave_get_samples(Wave *wave, size_t frame_index, uint8_t *buffer, size_t frame_count) {
     if (strlen(wave->filepath) == 0)
-        return -1;
+        return 0;
 
     int bits_per_sample = wave_get_bits_per_sample(wave);
     int channels_number = wave_get_number_of_channels(wave);
@@ -113,6 +117,8 @@ size_t wave_get_samples(Wave *wave, size_t frame_index, uint8_t *buffer, size_t 
     const int startIndex = frame_index * frame_size;
     const int endIndex = ((frame_index + frame_count) * frame_size) - 1;
 
+    if (startIndex + frame_count > wave->data_size)
+        return 0;
 
     // endIndex - startIndex + 1 -> Offset(in Bytes) from the start
     memcpy(buffer, wave->data + startIndex, endIndex - startIndex + 1);
@@ -168,7 +174,8 @@ static size_t wav_read_bytes(const char* filename, size_t start, size_t block_si
     while (iterations--) {
         fread(buffer, 1, 1 , fp);
     }
-    fread(buffer, 1, block_size , fp);
+ 
+    fread(buffer, 1, block_size , fp);        
 
     fclose(fp);
     return block_size;

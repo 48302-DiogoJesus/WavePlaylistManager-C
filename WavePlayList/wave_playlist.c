@@ -45,18 +45,6 @@ int main(int argc, char *argv[])
 	}
 }
 
-int is_valid_pointer(void *pointer, int closeIfNull) {
-	if (pointer == NULL) {
-		console->printString("Out of memory!");
-		if (closeIfNull) {
-			// Code to safely close the App
-		}
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
 /* ------------- COMMANDS ------------- */
 
 /**
@@ -102,13 +90,23 @@ Command *command_wait(const char *pre_message)
 	if (new_command_index < MAX_COMMANDS_CACHE)
 	{
 		commands_history[new_command_index] = (char *)malloc(strlen(input) + 1);
-		is_valid_pointer(commands_history[new_command_index], 1);
+		if (commands_history[new_command_index] == NULL) {
+			fprintf(stderr, "Out of memory!\n");
+			console->printString("\nReleasing Memory Allocated for the commands history...\n");
+			commands_free_history();
+			exit(-1);
+		}
 		
 		strcpy(commands_history[new_command_index], input);
 	}
 
 	Command *newCommand = malloc(sizeof(Command));
-	is_valid_pointer(newCommand, 1);
+	if (newCommand == NULL) {
+		fprintf(stderr, "Out of memory!\n");
+		console->printString("\nReleasing Memory Allocated for the commands history...\n");
+		commands_free_history();
+		exit(-1);
+	}
 
 	/*
 	* newCommand->instruction uses the original pointer whose memory was allocated
@@ -167,7 +165,7 @@ void command_execute(Playlist *playlist, Command *command)
 		free(command->instruction);
 		// Free the Command(2 pointer structure)
 		free(command);
-		exitApp(playlist);
+		command_exit(playlist);
 	}
 	else
 	{
@@ -238,7 +236,13 @@ void command_add(char *args, Playlist *playlist)
 	const char *filepath = filepaths[index];
 	// Allocate space for new Wave file memory representation
 	Wave *loadedWave = (Wave *)malloc(sizeof(Wave));
-	is_valid_pointer(loadedWave, 1);
+	if (loadedWave == NULL) {
+		fprintf(stderr, "Out of memory!\n");
+		console->printString("\nReleasing Memory Allocated for the commands history...\n");
+		commands_free_history();
+		exit(-1);
+	}
+
 	loadedWave = wave_load(filepath);
 
 	if (playlist_add(playlist, loadedWave))
@@ -299,25 +303,36 @@ void command_remove(char *args, Playlist *playlist)
 */
 void command_play(Playlist *playlist)
 {
-	console->printString("Started Playing...");
-	console->cursorYPos = 999;
+	console->cursorYPos = 4;
+
+	size_t init_playlist_size = playlist_size(playlist);
+
+	if (init_playlist_size == 0) {
+		console->printString("Playlist is empty!");
+		return;
+	}
+
+	console->printString("Playing...");
+
 	// While there are songs in the playlist
 	while (playlist_size(playlist) > 0)
 	{
 		// Play the first in Queue
 		Wave *firstInPlaylist = playlist_first(playlist);
-		// play(firstInPlaylist); // UNCOMMENT WHEN ALSA LIB IS WORKING
+		play(firstInPlaylist); // UNCOMMENT WHEN ALSA LIB IS WORKING
 		// Remove from queue after playing
 		playlist_remove(playlist, 0);
 	}
 	// Playlist ended
+	console->printString("\nStopped Playing...");
+	console->cursorYPos = 6;
 }
 
 /**
 * Exit the program safely by freeing memory allocated during the program execution
 * @param playlist Pointer to playlist object
 */
-void exitApp(Playlist *playlist)
+void command_exit(Playlist *playlist)
 {
 	console->printString("\nReleasing Memory Allocated for the commands history...\n");
 	commands_free_history();
@@ -484,7 +499,12 @@ Playlist *playlist_init()
 {
 	// Allocate space for new playlist
 	Playlist *newPlaylist = (Playlist *)malloc(sizeof(Playlist));
-	is_valid_pointer(newPlaylist, 1);
+	if (newPlaylist == NULL) {
+		fprintf(stderr, "Out of memory!\n");
+		console->printString("\nReleasing Memory Allocated for the commands history...\n");
+		commands_free_history();
+		exit(-1);
+	}
 	newPlaylist->size = 0;
 	return newPlaylist;
 }
@@ -508,7 +528,12 @@ size_t playlist_size(Playlist *playlist)
 int playlist_add(Playlist *playlist, Wave *wave)
 {
 	QueueItem *newQueueItem = (QueueItem *)malloc(sizeof(QueueItem));
-	is_valid_pointer(newQueueItem, 1);
+	if (newQueueItem == NULL) {
+		fprintf(stderr, "Out of memory!\n");
+		console->printString("\nReleasing Memory Allocated for the commands history...\n");
+		commands_free_history();
+		exit(-1);
+	}
 	newQueueItem->wave = wave;
 
 	// Special case for the first in the playlist
@@ -648,9 +673,9 @@ void playlist_destroy(Playlist *playlist)
 void playlist_print(Playlist *playlist)
 {
 	size_t current_playlist_size = playlist_size(playlist);
-	printf("| --  PLAYLIST -- |\n\n");
+	console->printString("| --  PLAYLIST -- |\n");
 	if (current_playlist_size == 0)
-		printf("Playlist is empty\n");
+		console->printString("Playlist is empty!");
 
 	QueueItem *current = playlist->head;
 	for (int i = 0; i < current_playlist_size; i++, current = current->next)
@@ -736,7 +761,12 @@ void file_tree_find_wavs(const char *dirpath)
 			{
 				size_t next_index = filesFound();
 				char *string = malloc(strlen(filepath) + 1);
-				is_valid_pointer(string, 1);
+				if (string == NULL) {
+					fprintf(stderr, "Out of memory!\n");
+					console->printString("\nReleasing Memory Allocated for the commands history...\n");
+					commands_free_history();
+					exit(-1);
+				}
 
 				strcpy(string, filepath);
 				filepaths[next_index] = string;
@@ -799,7 +829,7 @@ void file_show_search_results()
 
 /* ------------- WAV PLAY MANIPULATIONS ------------- */
 
-/*
+
 #define	SOUND_DEVICE	"default"
 
 void play(Wave *wave) {
@@ -850,10 +880,11 @@ void play(Wave *wave) {
 		frame_index += period_size;
 		read_frames = wave_get_samples(wave, frame_index, buffer, period_size);
 	}
+	/* pass the remaining samples, otherwise they're dropped in close */
 	result = snd_pcm_drain(handle);
 	if (result < 0)
 		printf("snd_pcm_drain failed: %s\n", snd_strerror(result));
 
 	snd_pcm_close(handle);
 	snd_config_update_free_global();
-}*/
+}

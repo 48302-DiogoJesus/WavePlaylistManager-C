@@ -3,7 +3,7 @@
 
 /* ---------- PLAY WAVE ---------- */
 
-// void play(Wave* wave);
+void play(Wave* wave);
 
 /* ---------- FILE SEARCH UTILS ---------- */
 
@@ -67,7 +67,7 @@ void command_remove(char *args, Playlist *playlist);
 void command_play(Playlist *playlist);
 void commands_free_history();
 int commands_history_size();
-void exitApp(Playlist *playlist);
+void command_exit(Playlist *playlist);
 
 char *commands_history[MAX_COMMANDS_CACHE];
 
