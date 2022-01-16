@@ -11,7 +11,7 @@ INC = ./inc/
 ####### LINK "wave_playlist.o" TO "wave_lib" library #######
 ####### STATIC LINKING #######
 static_linking_complete:
-	make console.o && make wave_playlist.o && $(CC) $(CFLAGS) -static $(BUILD)console.o $(BUILD)wave_playlist.o -o wave_playlist.o -lasound -L. $(LIBS)lib_wavelib_static.a -I $(INC)
+	make console.o && make wave_playlist.o && $(CC) $(CFLAGS) $(BUILD)console.o $(BUILD)wave_playlist.o -o wave_playlist -lasound -L. $(LIBS)lib_wavelib_static.a -I $(INC)
 
 ####### DYNAMIC LINKING #######
 dynamic_linking_complete:

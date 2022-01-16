@@ -6,6 +6,9 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <sys/select.h>
+
+#include <termios.h>
 
 #include <alsa/asoundlib.h>
 
@@ -229,8 +232,8 @@ void command_add(char *args, Playlist *playlist)
 	size_t index = atoi(args) - 1;
 	if (index >= filesFound())
 	{
-		console->printString("Invalid ID");
-		console->cursorYPos = 4;
+		console->printString("Invalid ID\nUse the command 'files' to see all the possible IDs");
+		console->cursorYPos = 5;
 		return;
 	}
 	const char *filepath = filepaths[index];
@@ -284,8 +287,8 @@ void command_remove(char *args, Playlist *playlist)
 		size_t index = atoi(args) - 1;
 		if (index < 0 || index > playlist_size(playlist) - 1)
 		{
-			console->printString("Invalid ID");
-			console->cursorYPos = 4;
+			console->printString("Invalid ID\nUse the command 'files' to see all the possible IDs");
+			console->cursorYPos = 5;
 			return;
 		}
 		if (playlist_remove(playlist, index))
@@ -312,20 +315,34 @@ void command_play(Playlist *playlist)
 		return;
 	}
 
-	console->printString("Playing...");
-
 	// While there are songs in the playlist
 	while (playlist_size(playlist) > 0)
 	{
 		// Play the first in Queue
 		Wave *firstInPlaylist = playlist_first(playlist);
-		play(firstInPlaylist); // UNCOMMENT WHEN ALSA LIB IS WORKING
+
+		printf("Currently playing \"%s\"\n", strrchr(firstInPlaylist->filename, '/') + 1);
+
+		int result = play(firstInPlaylist); // UNCOMMENT WHEN ALSA LIB IS WORKING
+		if (result == WAVE_PAUSE) {
+			console->clear();
+			console->printString("Paused");
+			console->cursorYPos = 4;
+			return;
+		}
+		if (result == WAVE_NEXT) {
+			console->clear();
+			console->printString("Skipping...");
+			console->cursorYPos = 4;
+		}
+		// if (result == NEXT) is not needed because it will remove current from playlist and play next one by default
 		// Remove from queue after playing
 		playlist_remove(playlist, 0);
 	}
 	// Playlist ended
-	console->printString("\nStopped Playing...");
-	console->cursorYPos = 6;
+	console->clear();
+	console->printString("No more wave files in queue");
+	console->cursorYPos = 4;
 }
 
 /**
@@ -829,10 +846,15 @@ void file_show_search_results()
 
 /* ------------- WAV PLAY MANIPULATIONS ------------- */
 
-
 #define	SOUND_DEVICE	"default"
 
-void play(Wave *wave) {
+// Holds the last frame_index played to allow play/pause functionality
+int last_frame_index;
+
+/**
+* @returns 0 -> File reached end; -1 -> UNKNOWN COMMAND; 1 -> WAVE_PAUSE; 2 -> WAVE.NEXT; 
+*/
+int play(Wave *wave) {
 
 	snd_pcm_t *handle = NULL;
 	int result = snd_pcm_open(&handle, SOUND_DEVICE, SND_PCM_STREAM_PLAYBACK, 0);
@@ -864,22 +886,50 @@ void play(Wave *wave) {
 
 	size_t read_frames = wave_get_samples(wave, frame_index, buffer, period_size);
 
-	while (read_frames > 0) {
-		snd_pcm_sframes_t wrote_frames = snd_pcm_writei(handle, buffer, read_frames);
-		if (wrote_frames < 0)
-			wrote_frames = snd_pcm_recover(handle, wrote_frames, 0);
-		if (wrote_frames < 0) {
-			printf("snd_pcm_writei failed: %s\n", snd_strerror(wrote_frames));
-			break;
-		}
+	// Setup in order to allow async keyboard interruptions
+	set_conio_terminal_mode();
 
-		if (wrote_frames < read_frames)
-			fprintf(stderr, "Short write (expected %li, wrote %li)\n",
-					read_frames, wrote_frames);
+	while (read_frames > 0) {
+		// If user presses key while playing...
+		if (kbhit()) {
+			int key_pressed = termius_get_char();
+
+			int return_value = -1;
+			switch(key_pressed) {
+				case 'p':
+					// Save the current frame in order to play it from there next time
+					last_frame_index = frame_index;
+					return_value = WAVE_PAUSE;
+					break;
+				case 'n':
+					return_value = WAVE_NEXT;
+					break;
+			}
+			// Reset terminal
+			reset_terminal_mode();
+			return return_value;
+		}
+		if (last_frame_index == 0) {
+			snd_pcm_sframes_t wrote_frames = snd_pcm_writei(handle, buffer, read_frames);
+			if (wrote_frames < 0)
+				wrote_frames = snd_pcm_recover(handle, wrote_frames, 0);
+			if (wrote_frames < 0) {
+				printf("snd_pcm_writei failed: %s\n", snd_strerror(wrote_frames));
+				break;
+			}
+
+			if (wrote_frames < read_frames)
+				fprintf(stderr, "Short write (expected %li, wrote %li)\n",
+						read_frames, wrote_frames);
+		} else {
+			frame_index = last_frame_index;
+			last_frame_index = 0;
+		}
 
 		frame_index += period_size;
 		read_frames = wave_get_samples(wave, frame_index, buffer, period_size);
 	}
+
 	/* pass the remaining samples, otherwise they're dropped in close */
 	result = snd_pcm_drain(handle);
 	if (result < 0)
@@ -887,4 +937,11 @@ void play(Wave *wave) {
 
 	snd_pcm_close(handle);
 	snd_config_update_free_global();
+	
+	// Reset terminal
+	reset_terminal_mode();
+
+	last_frame_index = 0;
+
+	return 0;
 }
