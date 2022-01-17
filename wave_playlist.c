@@ -26,6 +26,8 @@ int main(int argc, char *argv[])
 
 	console->clear();
 
+	build_commands();
+
 	// Do initial wave file search starting at the /home folder
 	file_tree_find_wavs("../");
 	// Display search results to user
@@ -38,17 +40,69 @@ int main(int argc, char *argv[])
 	while (1)
 	{
 		// Capture command
-		Command *command = command_wait(">");
+		char *command = wait_command(">");
 
 		console->clear();
 
 		// Handle Command
-		if (command != NULL)
-			command_execute(playlist, command);
+		if (command != NULL) {
+			char *instruction = strtok((char *)command, " ");
+			char *args = strtok(NULL, " ");
+			execute_command(instruction, playlist, args);
+		}
 	}
 }
 
-/* ------------- COMMANDS ------------- */
+/* ---------------------------------------------- */
+
+/* ------------- COMMANDS STRUCTURE ------------- */
+
+// GLOBAL COMMANDS OBJECT 
+Command *commands = NULL;
+
+void insert_command(const char *name, const char *description, void (*execute)(Playlist *playlist, const char *args)) {
+	Command *new_command = (Command *)malloc(sizeof (Command));
+	new_command->name = strdup(name);
+	new_command->description = strdup(description);
+	new_command->execute = execute;
+	new_command->next = commands;
+	commands = new_command;
+}
+
+void build_commands() {
+	insert_command("clear", "Clear console", command_clear_console);
+	insert_command("play", "Play the files on the playlist by order of insertion. Typing 'p' while playing will pause and typing 'n' will skip to the next file", command_play);
+	insert_command("rm", "Ex: rm <playlist_id>. Remove a file(<playlist_id> from list displayed when the command playlist is executed) from the playlist. 'rm *' removes all", command_remove);
+	insert_command("add", "Ex: add <file_id>. Add a file(<file_id> from list displayed when the command files is executed) to the playlist", command_add);
+	insert_command("list", "Show all the files in the playlist", command_playlist_print);
+	insert_command("files", "Show all the files found in the previous scan", command_print_files);
+	insert_command("scan", "Ex: <startdir?>. scan Scan the filesystem(starting at <startdir> or '/home' by default) looking for Wave files and show results", command_scan);	
+	insert_command("exit", "Safely shutdown the application", command_exit);
+	insert_command("help", "Show this helper", command_print_commands);
+}
+
+/**
+* Execute Command
+* Handles the execution for all possible commands
+* @param name Name of the command
+* @param playlist Pointer to the playlist object
+* @param args Arguments to pass into the execute function
+*/
+void execute_command(const char* name, Playlist *playlist, const char *args) {
+	console->clear();
+	for (Command *aux = commands; aux != NULL; aux = aux->next) {
+		if (strcmp(aux->name, name) == 0) {
+			aux->execute(playlist, args);
+			return;
+		}
+	}
+	console->printString("Unknown Command. Type 'help' to see all the available commands");
+	console->cursorYPos = 4;
+}
+
+/* -------------------------------------------- */
+
+/* ------------- COMMANDS HISTORY ------------- */
 
 /**
 * Comands History Size
@@ -68,7 +122,7 @@ int commands_history_size()
 /**
 * Free the pointers allocated for storing the previously used commands (under the form of input)
 */
-void commands_free_history()
+void commands_history_free()
 {
 	for (int i = 0; i < commands_history_size(); i++)
 	{
@@ -76,17 +130,19 @@ void commands_free_history()
 	}
 }
 
+/* ------------------------------------- */
+
 /**
 * Waits for valid user input so that it can build a Command object
 * @param pre_message Pointer to the playlist object
 * @returns a pointer to a Command object with the instruction and the arguments to execute the instruction with
 */
-Command *command_wait(const char *pre_message)
+char *wait_command(const char *pre_message)
 {
 	/* 
 	* Alternative to fgets(input, MAX_INPUT_SIZE, stdin);
 	*/
-	char *input = command_wait_valid_input(pre_message);
+	char *input = wait_valid_input(pre_message);
 
 	int new_command_index = commands_history_size();
 
@@ -96,117 +152,53 @@ Command *command_wait(const char *pre_message)
 		if (commands_history[new_command_index] == NULL) {
 			fprintf(stderr, "Out of memory!\n");
 			console->printString("\nReleasing Memory Allocated for the commands history...\n");
-			commands_free_history();
+			commands_history_free();
 			exit(-1);
 		}
 		
 		strcpy(commands_history[new_command_index], input);
 	}
 
-	Command *newCommand = malloc(sizeof(Command));
-	if (newCommand == NULL) {
-		fprintf(stderr, "Out of memory!\n");
-		console->printString("\nReleasing Memory Allocated for the commands history...\n");
-		commands_free_history();
-		exit(-1);
-	}
-
-	/*
-	* newCommand->instruction uses the original pointer whose memory was allocated
-	* in the "command_wait_valid_input" function so later there needs to be a free(newCommand->instruction)
-	* to compensate for the calloc in the previous function
-	*/
-	newCommand->instruction = strtok((char *)input, " ");
-	newCommand->args = strtok(NULL, " ");
-
-	return newCommand;
+	return input;
 }
 
-/**
-* Handles the execution for all possible commands
-* @param playlist Pointer to the playlist object
-* @param command Pointer to the command to execute
-*/
-void command_execute(Playlist *playlist, Command *command)
-{
-	char *instruction = command->instruction;
-	char *args = command->args;
-
-	if (strcmp(instruction, "help") == 0)
-	{
-		command_help(args);
-		console->cursorYPos = 15;
-	}
-	else if (strcmp(instruction, "playlist") == 0)
-	{
-		playlist_print(playlist);
-	}
-	else if (strcmp(instruction, "scan") == 0)
-	{
-		command_scan(args);
-	}
-	else if (strcmp(instruction, "files") == 0)
-	{
-		file_show_search_results();
-	}
-	else if (strcmp(instruction, "add") == 0)
-	{
-		command_add(args, playlist);
-	}
-	else if (strcmp(instruction, "rm") == 0)
-	{
-		command_remove(args, playlist);
-	}
-	// Carefull with the cursor Y position when stop playing
-	else if (strcmp(instruction, "play") == 0)
-	{
-		command_play(playlist);
-	}
-	else if (strcmp(instruction, "exit") == 0)
-	{
-		// Free the pointer initialized when getting user input
-		free(command->instruction);
-		// Free the Command(2 pointer structure)
-		free(command);
-		command_exit(playlist);
-	}
-	else
-	{
-		console->printString("Unexisting command");
-		console->cursorYPos = 4;
-	}
-	// Free the pointer initialized when getting user input
-	free(command->instruction);
-	// Free the Command(2 pointer structure)
-	free(command);
-}
-
-// INDIVIDUAL COMMANDS
+/* ------------- INDIVIDUAL COMMANDS IMPLEMENTATION ------------- */
 
 /**
-* Show all the commands and their basic usage
+* Print all the available commands
+* @param playlist Pointer to playlist object
+* @param args
 */
-void command_help()
-{
+void command_print_commands(Playlist *playlist, const char *args) {
 	console->printString(
-		"|| -- COMMANDS LIST -- |\n\n"
-		"? - Opcional parameter\n\n"
-		"help              -> Show this helper\n"
-		"scan <startdir?>  -> Scan the filesystem(starting at <startdir> or '/home' by default) looking for Wave files and show results\n"
-		"files             -> Show all the files found in the previous scan\n"
-		"playlist          -> Show all the files in the playlist\n"
-		"add <file_id>     -> Add a file(<file_id> from list displayed when the command files is executed) to the playlist\n"
-		"rm  <playlist_id> -> Remove a file(<playlist_id> from list displayed when the command playlist is executed) from the playlist. 'rm *' removes all\n"
-		"play              -> Start playing the files on the playlist by order of insertion\n"
-		"exit              -> Safely shutdown the application");
+	"|| -- COMMANDS LIST -- |\n\n"
+	"? - Opcional parameter\n");
+	for (Command *aux = commands; aux != NULL; aux = aux->next)
+		printf("%s:\t\t%s\n", aux->name, aux->description);
+	console->cursorYPos = 15;
+}
+
+/**
+* Exit the program safely by freeing memory allocated during the program execution
+* @param playlist Pointer to playlist object
+* @param args
+*/
+void command_exit(Playlist *playlist, const char *args)
+{
+	console->printString("\nReleasing Memory Allocated for the commands history...\n");
+	commands_history_free();
+	console->printString("Releasing Memory Allocated for the Playlist...\n");
+	playlist_destroy(playlist);
+	console->printString("Exiting...\n");
+	exit(0);
 }
 
 /**
 * Scan the filesystem for wave files
-* @param args Starting directory for the scan. If not passed it will scan the default directory (/home)
 * @param playlist Pointer to playlist object
+* @param args Starting directory for the scan. If not passed it will scan the default directory (/home)
 */
-void command_scan(char *args)
+void command_scan(Playlist *playlist, const char *args)
 {
 	// Reset the array with the filepaths of the wave files found
 	memset(filepaths, 0, MAX_FILES * sizeof(filepaths[0]));
@@ -217,11 +209,41 @@ void command_scan(char *args)
 }
 
 /**
-* Add an item to the playlist
-* @param args ID of the item to add
+* Display the wave files found during last scan
 * @param playlist Pointer to playlist object
+* @param args
 */
-void command_add(char *args, Playlist *playlist)
+void command_print_files(Playlist *playlist, const char *args) {
+	file_show_search_results();
+}
+
+/**
+ * Playlist Print
+ * Print all the playlist items to the console
+ * @param playlist pointer to the playlist object
+ * @param args
+ */
+void command_playlist_print(Playlist *playlist, const char *args)
+{
+	size_t current_playlist_size = playlist_size(playlist);
+	console->printString("| --  PLAYLIST -- |\n");
+	if (current_playlist_size == 0)
+		console->printString("Playlist is empty!");
+
+	QueueItem *current = playlist->head;
+	for (int i = 0; i < current_playlist_size; i++, current = current->next)
+	{
+		printf("%d) %s\n", i + 1, strrchr(current->wave->filename, '/') + 1);
+	}
+	console->cursorYPos = (current_playlist_size < 2 ? 0 : current_playlist_size - 1) + 6;
+}
+
+/**
+* Add an item to the playlist
+* @param playlist Pointer to playlist object
+* @param args ID of the item to add
+*/
+void command_add(Playlist *playlist, const char *args)
 {
 	if (args == NULL)
 	{
@@ -230,7 +252,7 @@ void command_add(char *args, Playlist *playlist)
 		return;
 	}
 	size_t index = atoi(args) - 1;
-	if (index >= filesFound())
+	if (index >= files_found_num())
 	{
 		console->printString("Invalid ID\nUse the command 'files' to see all the possible IDs");
 		console->cursorYPos = 5;
@@ -242,7 +264,7 @@ void command_add(char *args, Playlist *playlist)
 	if (loadedWave == NULL) {
 		fprintf(stderr, "Out of memory!\n");
 		console->printString("\nReleasing Memory Allocated for the commands history...\n");
-		commands_free_history();
+		commands_history_free();
 		exit(-1);
 	}
 
@@ -257,10 +279,10 @@ void command_add(char *args, Playlist *playlist)
 
 /**
 * Remove one or all items from the playlist
-* @param args Specify if 1 item(by ID) should be deleted or all of them
 * @param playlist Pointer to playlist object
+* @param args Specify if 1 item(by ID) should be deleted or all of them
 */
-void command_remove(char *args, Playlist *playlist)
+void command_remove(Playlist *playlist, const char *args)
 {
 	if (args == NULL || strlen(args) == 0)
 	{
@@ -300,11 +322,13 @@ void command_remove(char *args, Playlist *playlist)
 	}
 }
 
+
 /**
 * Play the full playlist, starting at the first item inserted in the playlist and removing it after it has played
 * @param playlist Pointer to playlist object
+* @param args
 */
-void command_play(Playlist *playlist)
+void command_play(Playlist *playlist, const char *args)
 {
 	console->cursorYPos = 4;
 
@@ -326,6 +350,7 @@ void command_play(Playlist *playlist)
 		int result = play(firstInPlaylist); // UNCOMMENT WHEN ALSA LIB IS WORKING
 		if (result == WAVE_PAUSE) {
 			console->clear();
+
 			console->printString("Paused");
 			console->cursorYPos = 4;
 			return;
@@ -346,18 +371,16 @@ void command_play(Playlist *playlist)
 }
 
 /**
-* Exit the program safely by freeing memory allocated during the program execution
+* Clear console
 * @param playlist Pointer to playlist object
+* @param args
 */
-void command_exit(Playlist *playlist)
-{
-	console->printString("\nReleasing Memory Allocated for the commands history...\n");
-	commands_free_history();
-	console->printString("Releasing Memory Allocated for the Playlist...\n");
-	playlist_destroy(playlist);
-	console->printString("Exiting...\n");
-	exit(0);
+void command_clear_console(Playlist *playlist, const char *args) {
+	console->clear();
+	console->cursorYPos = 3;
 }
+
+/* ------------------------------------------- */
 
 /**
 * Custom function to get user input analysing every keystroke to make detecting key combinations possible
@@ -367,7 +390,7 @@ void command_exit(Playlist *playlist)
 * @param pre_message Message to show before accepting user input (Ex: "Command >")
 * @returns A pointer to the user input string
 */
-char *command_wait_valid_input(const char *pre_message)
+char *wait_valid_input(const char *pre_message)
 {
 	char *input = (char *)calloc(1, MAX_INPUT_SIZE);
 	console->cursorXPos = 3;
@@ -505,7 +528,7 @@ char *command_wait_valid_input(const char *pre_message)
 	}
 }
 
-/* ------------- PLAYLIST ------------- */
+/* ----------------- PLAYLIST ----------------- */
 
 /**
 * Playlist Init
@@ -519,7 +542,7 @@ Playlist *playlist_init()
 	if (newPlaylist == NULL) {
 		fprintf(stderr, "Out of memory!\n");
 		console->printString("\nReleasing Memory Allocated for the commands history...\n");
-		commands_free_history();
+		commands_history_free();
 		exit(-1);
 	}
 	newPlaylist->size = 0;
@@ -548,7 +571,7 @@ int playlist_add(Playlist *playlist, Wave *wave)
 	if (newQueueItem == NULL) {
 		fprintf(stderr, "Out of memory!\n");
 		console->printString("\nReleasing Memory Allocated for the commands history...\n");
-		commands_free_history();
+		commands_history_free();
 		exit(-1);
 	}
 	newQueueItem->wave = wave;
@@ -682,26 +705,6 @@ void playlist_destroy(Playlist *playlist)
 	free(playlist);
 }
 
-/**
- * Playlist Print
- * Print the playlist items to the console in a "friendly" way
- * @param playlist pointer to the playlist object
- */
-void playlist_print(Playlist *playlist)
-{
-	size_t current_playlist_size = playlist_size(playlist);
-	console->printString("| --  PLAYLIST -- |\n");
-	if (current_playlist_size == 0)
-		console->printString("Playlist is empty!");
-
-	QueueItem *current = playlist->head;
-	for (int i = 0; i < current_playlist_size; i++, current = current->next)
-	{
-		printf("%d) %s\n", i + 1, strrchr(current->wave->filename, '/') + 1);
-	}
-	console->cursorYPos = (current_playlist_size < 2 ? 0 : current_playlist_size - 1) + 6;
-}
-
 /* ------------- WAV FILE SEARCH ------------- */
 
 /**
@@ -739,7 +742,7 @@ static int string_match(const char *pattern, const char *candidate)
 * Files Found
 * @returns the number of files found in the last search
 */
-static size_t filesFound()
+static size_t files_found_num()
 {
 	size_t items_num = 0;
 	for (; items_num < MAX_FILES; items_num++)
@@ -776,12 +779,12 @@ void file_tree_find_wavs(const char *dirpath)
 			// Check if filename matches pattern
 			if (string_match("*.wav", strrchr(filepath, '/') + 1))
 			{
-				size_t next_index = filesFound();
+				size_t next_index = files_found_num();
 				char *string = malloc(strlen(filepath) + 1);
 				if (string == NULL) {
 					fprintf(stderr, "Out of memory!\n");
 					console->printString("\nReleasing Memory Allocated for the commands history...\n");
-					commands_free_history();
+					commands_history_free();
 					exit(-1);
 				}
 
@@ -810,7 +813,7 @@ void file_tree_find_wavs(const char *dirpath)
 */
 void sort_file_search_results()
 {
-	size_t files_number = filesFound();
+	size_t files_number = files_found_num();
 
 	// Sort the filepaths using bubble sort
 	for (int i = 0; i < files_number; i++)
@@ -835,7 +838,7 @@ void file_show_search_results()
 {
 	// Sort the filepaths
 	sort_file_search_results();
-	size_t files_number = filesFound();
+	size_t files_number = files_found_num();
 	printf("| -- SEARCH RESULTS -- |\n\n-Results no: %ld\n-Sorted: alphabetically\n-Pattern: \"%s\"\n\n", files_number, "*.wav");
 	for (int i = 0; i < files_number; i++)
 	{
@@ -846,10 +849,7 @@ void file_show_search_results()
 
 /* ------------- WAV PLAY MANIPULATIONS ------------- */
 
-#define	SOUND_DEVICE	"default"
-
-// Holds the last frame_index played to allow play/pause functionality
-int last_frame_index;
+#define	SOUND_DEVICE "default"
 
 /**
 * @returns 0 -> File reached end; -1 -> UNKNOWN COMMAND; 1 -> WAVE_PAUSE; 2 -> WAVE.NEXT; 

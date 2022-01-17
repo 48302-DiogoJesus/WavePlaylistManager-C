@@ -16,7 +16,7 @@ char *filepaths[MAX_FILES];
 void file_tree_find_wavs(const char *dirpath);
 void sort_file_search_results();
 void file_show_search_results();                      
-static size_t filesFound();
+static size_t files_found_num();
 
 /* ---------- PLAYLIST ---------- */
 
@@ -40,44 +40,56 @@ int playlist_add(Playlist *playlist, Wave *wave);
 int playlist_remove(Playlist *playlist, size_t index);
 int playlist_wipe(Playlist *playlist);
 void playlist_destroy(Playlist *playlist);
-void playlist_print(Playlist *playlist);
 int playlist_has_file(Playlist *playlist, const char* filename);
-void nice_print(const char* message);
 
-/* ---------- COMMANDS ---------- */
+/* ---------- COMMANDS STRUCTURE ---------- */
 
 typedef struct command {
-    char *instruction;
-    char *args;
+	struct command *next;
+	const char *name;
+	const char *description;
+	void (*execute)(Playlist *playlist, const char *args);
 } Command;
 
+void execute_command(const char* name, Playlist *playlist, const char *args);
+void insert_command(const char *name, const char *description, void (*execute)(Playlist *playlist, const char *args));
+void build_commands();
+
+/* ---------- GET COMMAND FROM STDIN ---------- */
 #define MAX_COMMANDS_CACHE 100
 #define MAX_INPUT_SIZE 100
 
-int *command_get_char();
-char *command_wait_valid_input(const char *pre_message);
-Command *command_wait(const char *pre_message);
-void command_execute(Playlist *playlist, Command *command);
-void command_handle_result(int result);
-// Individual command functions
-void command_help();
-void command_scan(char *args);
-void command_add(char *args, Playlist *playlist);
-void command_remove(char *args, Playlist *playlist);
-void command_play(Playlist *playlist);
-void commands_free_history();
-int commands_history_size();
-void command_exit(Playlist *playlist);
+char *wait_valid_input(const char *pre_message);
+char *wait_command(const char *pre_message);
 
+/* ---------- INDIVIDUAL COMMANDS IMPLEMENTATION ---------- */
+void command_print_commands(Playlist *playlist, const char *args);
+void command_exit(Playlist *playlist, const char *args);
+void command_scan(Playlist *playlist, const char *args);
+void command_print_files(Playlist *playlist, const char *args);
+void command_playlist_print(Playlist *playlist, const char *args);
+void command_add(Playlist *playlist, const char *args);
+void command_remove(Playlist *playlist, const char *args);
+void command_play(Playlist *playlist, const char *args);
+void command_clear_console(Playlist *playlist, const char *args);
+
+/* ---------- COMMANDS HISTORY ---------- */
 char *commands_history[MAX_COMMANDS_CACHE];
 
-/* FUNCTIONALITY REQUIRED TO ALLOW AND RESPOND TO USER INPUT WHILE PLAYING A WAVE FILE */
+void commands_free_history();
+int commands_history_size();
+
+/* ---- ASYNCHRONOUSLY WAIT FOR INTERRUPTIONS(VIA STDIN) WHILE PLAYING WAVE FILES ---- */
 struct termios orig_termios;
 
+// AVAILABLE "WHILE-PLAYING" FUNCTIONALLITY
 enum WAVE {
 	WAVE_PAUSE = 1,
 	WAVE_NEXT
 };
+
+// Holds the last frame_index played to allow play/pause functionality
+int last_frame_index;
 
 void reset_terminal_mode()
 {

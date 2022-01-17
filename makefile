@@ -24,7 +24,7 @@ wave_playlist.o: wave_playlist.c
 	$(CC) $(CFLAGS) $< -c -o $(BUILD)$@ -lasound -I $(INC)
 
 console.o: console.c
-	$(CC) $(CFLAGS) $< -c -o $(BUILD)$@
+	$(CC) $(CFLAGS) $< -c -o $(BUILD)$@ -I $(INC)
 
 ####### CLEAN COMMANDS #######
 clean: 

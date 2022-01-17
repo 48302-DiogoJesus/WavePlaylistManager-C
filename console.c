@@ -1,24 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct console {
-    int cursorYPos, cursorXPos;
-    void (*printString)(const char *message);
-    int *(*get_keycode)();
-    void (*clear)();
-    void (*clearLine)();
-    void (*forceCursorTo)(int x, int y);
-} Console;
-
-// Global console object
-Console *console;
-
-/*
-void console_init();
-int *console_get_keycode();
-void console_printString(const char *message);
-void console_free();
-*/
+#include "console.h"
 
 void console_free() {
     free(console);

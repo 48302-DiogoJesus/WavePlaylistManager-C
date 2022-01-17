@@ -10,6 +10,7 @@ typedef struct console {
     void (*forceCursorTo)(int x, int y);
 } Console;
 
+
 // Global console object
 Console *console;
 
