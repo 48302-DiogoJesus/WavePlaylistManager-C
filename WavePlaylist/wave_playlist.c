@@ -18,39 +18,67 @@
 
 #include "wave_playlist.h"
 
+/* -- ERROR TRY/CATCH SYSTEM BASE ON SETJMP -- */
+#include <setjmp.h>
+
+jmp_buf ex_buf__;
+
+#define TRY do {switch (setjmp(ex_buf__)) { case 0:
+#define CATCH(err) break; case err:
+#define ENDTRY } }while(0)
+#define THROW(err) longjmp(ex_buf__, err)
+
+// Error defenitions
+#define NO_HEAP_SPACE 1
+
 /* ---------- PROGRAM MAIN FUNCTION ---------- */
 
 int main(int argc, char *argv[])
 {
+	// Initialize console object and clear the console to start clean 
 	console_init();
-
 	console->clear();
 
+	// Build commands structure which will be accessibly through a global object
 	build_commands();
 
 	// Do initial wave file search starting at the /home folder
 	file_tree_find_wavs("../");
-	// Display search results to user
+	// Display the previous search results to user
 	file_show_search_results();
 
 	// Initialize the playlist
 	Playlist *playlist = playlist_init();
 
-	// Commands Cycle
-	while (1)
+	TRY 
 	{
-		// Capture command
-		char *command = wait_command(">");
+		// Commands Cycle
+		while (1)
+		{
+			// Capture command
+			char *command = wait_command(">");
 
-		console->clear();
+			console->clear();
 
-		// Handle Command
-		if (command != NULL) {
-			char *instruction = strtok((char *)command, " ");
-			char *args = strtok(NULL, " ");
-			execute_command(instruction, playlist, args);
+			// Handle Command
+			if (command != NULL) {
+				char *instruction = strtok((char *)command, " ");
+				char *args = strtok(NULL, " ");
+				execute_command(instruction, playlist, args);
+			}
 		}
 	}
+	CATCH (NO_HEAP_SPACE)
+	{
+		console->clear();
+		console->printString("Out of memory!\n");
+		console->printString("Releasing Memory Allocated for the commands history...\n");
+		commands_history_free();
+		console->printString("Releasing Memory Allocated for the Playlist...\n");
+		playlist_destroy(playlist);
+		exit(-1);
+	}
+	ENDTRY;
 }
 
 /* ---------------------------------------------- */
@@ -62,6 +90,8 @@ Command *commands = NULL;
 
 void insert_command(const char *name, const char *description, void (*execute)(Playlist *playlist, const char *args)) {
 	Command *new_command = (Command *)malloc(sizeof (Command));
+	if (new_command == NULL)
+		THROW(NO_HEAP_SPACE);
 	new_command->name = strdup(name);
 	new_command->description = strdup(description);
 	new_command->execute = execute;
@@ -149,12 +179,9 @@ char *wait_command(const char *pre_message)
 	if (new_command_index < MAX_COMMANDS_CACHE)
 	{
 		commands_history[new_command_index] = (char *)malloc(strlen(input) + 1);
-		if (commands_history[new_command_index] == NULL) {
-			fprintf(stderr, "Out of memory!\n");
-			console->printString("\nReleasing Memory Allocated for the commands history...\n");
-			commands_history_free();
-			exit(-1);
-		}
+
+		if (commands_history[new_command_index] == NULL)
+			THROW(NO_HEAP_SPACE);
 		
 		strcpy(commands_history[new_command_index], input);
 	}
@@ -175,7 +202,7 @@ void command_print_commands(Playlist *playlist, const char *args) {
 	"? - Opcional parameter\n");
 	for (Command *aux = commands; aux != NULL; aux = aux->next)
 		printf("%s:\t\t%s\n", aux->name, aux->description);
-	console->cursorYPos = 15;
+	console->cursorYPos = 16;
 }
 
 /**
@@ -262,10 +289,7 @@ void command_add(Playlist *playlist, const char *args)
 	// Allocate space for new Wave file memory representation
 	Wave *loadedWave = (Wave *)malloc(sizeof(Wave));
 	if (loadedWave == NULL) {
-		fprintf(stderr, "Out of memory!\n");
-		console->printString("\nReleasing Memory Allocated for the commands history...\n");
-		commands_history_free();
-		exit(-1);
+		THROW(NO_HEAP_SPACE);
 	}
 
 	loadedWave = wave_load(filepath);
@@ -540,10 +564,7 @@ Playlist *playlist_init()
 	// Allocate space for new playlist
 	Playlist *newPlaylist = (Playlist *)malloc(sizeof(Playlist));
 	if (newPlaylist == NULL) {
-		fprintf(stderr, "Out of memory!\n");
-		console->printString("\nReleasing Memory Allocated for the commands history...\n");
-		commands_history_free();
-		exit(-1);
+		THROW(NO_HEAP_SPACE);
 	}
 	newPlaylist->size = 0;
 	return newPlaylist;
@@ -569,10 +590,7 @@ int playlist_add(Playlist *playlist, Wave *wave)
 {
 	QueueItem *newQueueItem = (QueueItem *)malloc(sizeof(QueueItem));
 	if (newQueueItem == NULL) {
-		fprintf(stderr, "Out of memory!\n");
-		console->printString("\nReleasing Memory Allocated for the commands history...\n");
-		commands_history_free();
-		exit(-1);
+		THROW(NO_HEAP_SPACE);
 	}
 	newQueueItem->wave = wave;
 
@@ -695,13 +713,12 @@ int playlist_wipe(Playlist *playlist)
 
 /**
  * Free Playlist
- * Free the space allocated for the Playlist object
+ * Free the space allocated for the Playlist object and its inner items
  * @param playlist pointer to the playlist object
  */
 void playlist_destroy(Playlist *playlist)
 {
-	// ! WHY NOT WIPE? ERROR? UNCOMMENT ANDD TRY
-	// playlist_wipe(playlist);
+	playlist_wipe(playlist);
 	free(playlist);
 }
 
@@ -782,10 +799,7 @@ void file_tree_find_wavs(const char *dirpath)
 				size_t next_index = files_found_num();
 				char *string = malloc(strlen(filepath) + 1);
 				if (string == NULL) {
-					fprintf(stderr, "Out of memory!\n");
-					console->printString("\nReleasing Memory Allocated for the commands history...\n");
-					commands_history_free();
-					exit(-1);
+					THROW(NO_HEAP_SPACE);
 				}
 
 				strcpy(string, filepath);

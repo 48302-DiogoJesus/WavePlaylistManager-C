@@ -19,8 +19,7 @@ void file_show_search_results();
 static size_t files_found_num();
 
 /* ---------- PLAYLIST ---------- */
-
-// Queue Item (Linked list)
+// Queue Item
 typedef struct queueItem {
     struct queueItem *next, *prev;
     Wave *wave;
@@ -43,7 +42,6 @@ void playlist_destroy(Playlist *playlist);
 int playlist_has_file(Playlist *playlist, const char* filename);
 
 /* ---------- COMMANDS STRUCTURE ---------- */
-
 typedef struct command {
 	struct command *next;
 	const char *name;
@@ -76,7 +74,7 @@ void command_clear_console(Playlist *playlist, const char *args);
 /* ---------- COMMANDS HISTORY ---------- */
 char *commands_history[MAX_COMMANDS_CACHE];
 
-void commands_free_history();
+void commands_history_free();
 int commands_history_size();
 
 /* ---- ASYNCHRONOUSLY WAIT FOR INTERRUPTIONS(VIA STDIN) WHILE PLAYING WAVE FILES ---- */
