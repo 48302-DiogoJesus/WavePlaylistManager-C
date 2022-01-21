@@ -46,8 +46,8 @@ int main(int argc, char *argv[]) {
 	printf("BitsPerSample=%d\n\n", wave_get_bits_per_sample(wave));
 
 	int frame_size = wave_get_bits_per_sample(wave) / 8 * wave_get_number_of_channels(wave);
-	int period = wave_get_sample_rate(wave) / 100;	/* 10 mili segundo */
-	int frame_index = 0; /* início do áudio */
+	int period = wave_get_sample_rate(wave) / 100;
+	int frame_index = 0;
 
 	uint8_t buffer[frame_size * period];
 	size_t read_samples = wave_get_samples(wave, frame_index, buffer, period);

@@ -10,6 +10,9 @@ BUILD = ./build/
 
 INC = ./inc/
 
+
+################## STATIC AND DYNAMIC LINKING SINGLE COMMAND ##################
+
 both:
 	make static_linking_complete && make dynamic_linking_complete
 
@@ -23,6 +26,7 @@ static_linking_complete:
 dynamic_linking_complete:
 	make wave_dump.o && make wavelib_dynamic.o && make lib_wavelib_dynamic.so && make dynamic_linking && cp $(LIBS)lib_wavelib_dynamic.so /lib/
 
+###############################################################################
 
 ####### CREATE OBJECTS #######
 # CREATE OBJECT FROM "WAVE_DUMP.c"
@@ -45,6 +49,7 @@ lib_wavelib_dynamic.so: $(BUILD)wavelib_dynamic.o
 # CREATE STATIC LIBRARY #
 lib_wavelib_static.a: $(BUILD)wavelib_static.o
 	$(CC) $(CFLAGS) -c $(SRC)wavelib.c -o $< -I $(INC) && ar cr $(LIBS)$@ $<
+
 
 ####### LINK "wave_dump.o" TO LIBRARIES #######
 # LINK TO STATIC LIBRARY #

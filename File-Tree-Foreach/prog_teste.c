@@ -5,11 +5,13 @@
 
 #include "file_tree_foreach.h"
 
+// Max number of files that can be found in one search
 #define MAX_FILES 500
+// Max number of characters for the filenames
 #define MAX_FILE_NAME_SIZE 100
 
 // Global array that will hold the filenames of all the files found matching the pattern
-char *filenames[MAX_FILES] = {};
+char *filenames[MAX_FILES];
 
 /* -- Private Functions -- */
 static void saveFileName(const char *filename, void *context);
@@ -71,6 +73,7 @@ static void sortFileNames(const char *context)
         }
     }
 
+    // Display sorted results
     printf("| -- SEARCH RESULTS -- |\n\n-Results no: %ld\n-Sorted: alphabetically\n-Pattern: \"%s\"\n\n", files_number, context);
     for (int i = 0; i < files_number; i++)
     {

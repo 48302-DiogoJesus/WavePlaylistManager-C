@@ -8,6 +8,7 @@
 
 #include "wavelib.h"
 
+// Functions used internally (private functions)
 static size_t wav_read_bytes(const char* filename, size_t start, size_t block_size, uint8_t *buffer);
 static int wave_extract_header_field(Wave *wave, const int offset, const int field_size, const bool little_endian);
 static int regex_match(const char *string, const char *pattern);

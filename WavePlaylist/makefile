@@ -8,6 +8,9 @@ BUILD = ./build/
 
 INC = ./inc/
 
+
+################## STATIC AND DYNAMIC LINKING SINGLE COMMAND ##################
+
 both:
 	make static_linking_complete && make dynamic_linking_complete
 
@@ -20,6 +23,9 @@ static_linking_complete:
 dynamic_linking_complete:
 	make console.o && $(CC) $(CFLAGS) $(BUILD)console.o wave_playlist.c -o wave_playlist_d -lasound -L. $(LIBS)lib_wavelib_dynamic.so -I $(INC)
 
+###############################################################################
+
+
 ####### CREATE OBJECTS #######
 
 # CREATE OBJECT FROM "wave_playlist"
@@ -29,6 +35,7 @@ wave_playlist.o: wave_playlist.c
 console.o: console.c
 	$(CC) $(CFLAGS) $< -c -o $(BUILD)$@ -I $(INC)
 
-####### CLEAN COMMANDS #######
+
+####### CLEAN BUILD FOLDER #######
 clean: 
 	rm -f $(BUILD)*
