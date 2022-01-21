@@ -35,16 +35,16 @@ jmp_buf ex_buf__;
 
 int main(int argc, char *argv[])
 {
-	// Initialize console object and clear the console to start clean 
+	// Initialize console object
 	console_init();
-	console->clear();
-
+	
 	// Build commands structure which will be accessibly through a global object
 	build_commands();
 
+	console->clear();
+
 	// Do initial wave file search starting at the /home folder
-	file_tree_find_wavs("../");
-	// Display the previous search results to user
+	file_tree_find_wavs("/home");
 	file_show_search_results();
 
 	// Initialize the playlist
@@ -88,6 +88,9 @@ int main(int argc, char *argv[])
 // GLOBAL COMMANDS OBJECT 
 Command *commands = NULL;
 
+/**
+* Insert a new command to the commands structure
+*/
 void insert_command(const char *name, const char *description, void (*execute)(Playlist *playlist, const char *args)) {
 	Command *new_command = (Command *)malloc(sizeof (Command));
 	if (new_command == NULL)
@@ -99,6 +102,9 @@ void insert_command(const char *name, const char *description, void (*execute)(P
 	commands = new_command;
 }
 
+/**
+* Build all available commands for this application
+*/
 void build_commands() {
 	insert_command("clear", "Clear console", command_clear_console);
 	insert_command("play", "Play the files on the playlist by order of insertion. Typing 'p' while playing will pause and typing 'n' will skip to the next file", command_play);
@@ -150,7 +156,7 @@ int commands_history_size()
 }
 
 /**
-* Free the pointers allocated for storing the previously used commands (under the form of input)
+* Free the pointers allocated for storing the previous user inputs
 */
 void commands_history_free()
 {
@@ -163,9 +169,9 @@ void commands_history_free()
 /* ------------------------------------- */
 
 /**
-* Waits for valid user input so that it can build a Command object
-* @param pre_message Pointer to the playlist object
-* @returns a pointer to a Command object with the instruction and the arguments to execute the instruction with
+* Waits for valid user input
+* @param pre_message Message to show before accepting user input (Ex: "Command >")
+* @returns a pointer to the beggining of the string corresponding to the user input
 */
 char *wait_command(const char *pre_message)
 {
@@ -206,7 +212,7 @@ void command_print_commands(Playlist *playlist, const char *args) {
 }
 
 /**
-* Exit the program safely by freeing memory allocated during the program execution
+* Exit the program safely by freeing memory allocated during program execution
 * @param playlist Pointer to playlist object
 * @param args
 */
@@ -304,7 +310,7 @@ void command_add(Playlist *playlist, const char *args)
 /**
 * Remove one or all items from the playlist
 * @param playlist Pointer to playlist object
-* @param args Specify if 1 item(by ID) should be deleted or all of them
+* @param args Playlist Item ID. Decide if 1 item should be deleted or all of them. Ex: rm 1; rm *;
 */
 void command_remove(Playlist *playlist, const char *args)
 {
@@ -409,10 +415,10 @@ void command_clear_console(Playlist *playlist, const char *args) {
 /**
 * Custom function to get user input analysing every keystroke to make detecting key combinations possible
 * Functionality Advantages:
-* - CTRL+C -> Safely end app (Release memory)
+* - CTRL+C -> Safely end app (Release memory allocated)
 * - Arrows UP & DOWN (use previous commands)
 * @param pre_message Message to show before accepting user input (Ex: "Command >")
-* @returns A pointer to the user input string
+* @returns A pointer to the user input
 */
 char *wait_valid_input(const char *pre_message)
 {
@@ -713,7 +719,7 @@ int playlist_wipe(Playlist *playlist)
 
 /**
  * Free Playlist
- * Free the space allocated for the Playlist object and its inner items
+ * Free the space allocated for the Playlist object and its items
  * @param playlist pointer to the playlist object
  */
 void playlist_destroy(Playlist *playlist)

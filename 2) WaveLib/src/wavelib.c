@@ -4,12 +4,12 @@
 #include <stdlib.h>
 #include <regex.h>
 #include <stdint.h>
-#include <stdbool.h> 
+#include <stdbool.h>
 
 #include "wavelib.h"
 
 // Functions used internally (private functions)
-static size_t wav_read_bytes(const char* filename, size_t start, size_t block_size, uint8_t *buffer);
+static size_t wav_read_bytes(const char *filename, size_t start, size_t block_size, uint8_t *buffer);
 static int wave_extract_header_field(Wave *wave, const int offset, const int field_size, const bool little_endian);
 static int regex_match(const char *string, const char *pattern);
 static int ConvertToInt(uint8_t value[], int bytesNum, const bool littleEndian);
@@ -22,18 +22,20 @@ static int wave_get_data_size(Wave *wave);
  * @param filename Name of the file to load
  * @returns pointer to the new Wave struct
 */
-Wave *wave_load(const char* filename) {
-    if (!regex_match(filename, "\\.wav$")) 
+Wave *wave_load(const char *filename)
+{
+    if (!regex_match(filename, "\\.wav$"))
         return NULL;
     if (access(filename, F_OK) != 0)
         return NULL;
-        
+
     Wave *new_wave = (Wave *)malloc(sizeof(Wave));
-    if (new_wave == NULL) {
+    if (new_wave == NULL)
+    {
         printf("Out of memory!");
         return NULL;
     }
-    
+
     new_wave->filepath = filename;
 
     // Calculate file Data size to allocate memory for it
@@ -44,9 +46,9 @@ Wave *wave_load(const char* filename) {
     new_wave->data = (uint8_t *)calloc(1, data_size);
 
     // Copy all the file Data to a buffer (new_wave->data)
-    const int dataOffset = 44;  // Header Size
+    const int dataOffset = 44; // Header Size
     wav_read_bytes(new_wave->filepath, dataOffset, data_size, new_wave->data);
-    
+
     return new_wave;
 }
 
@@ -54,7 +56,8 @@ Wave *wave_load(const char* filename) {
  * Wave Destroy (Deletes the representation of a Wave file in memory)
  * @param wave Pointer to the wave object to destroy
 */
-void wave_destroy(Wave *wave) {
+void wave_destroy(Wave *wave)
+{
     free(wave);
 }
 
@@ -63,11 +66,12 @@ void wave_destroy(Wave *wave) {
  * @param wave Pointer to the wave object
  * @returns number of bits per sample
 */
-int wave_get_bits_per_sample(Wave *wave) {
+int wave_get_bits_per_sample(Wave *wave)
+{
     if (strlen(wave->filepath) == 0)
         return -1;
 
-    return wave_extract_header_field(wave, 34, 2, true);;
+    return wave_extract_header_field(wave, 34, 2, true);
 }
 
 /**
@@ -75,7 +79,8 @@ int wave_get_bits_per_sample(Wave *wave) {
  * @param wave Pointer to the wave object
  * @returns number of channels
 */
-int wave_get_number_of_channels(Wave *wave) {
+int wave_get_number_of_channels(Wave *wave)
+{
     if (strlen(wave->filepath) == 0)
         return -1;
 
@@ -87,7 +92,8 @@ int wave_get_number_of_channels(Wave *wave) {
  * @param wave Pointer to the wave object
  * @returns sample rate number
 */
-int wave_get_sample_rate(Wave *wave) {
+int wave_get_sample_rate(Wave *wave)
+{
     if (strlen(wave->filepath) == 0)
         return -1;
 
@@ -102,22 +108,21 @@ int wave_get_sample_rate(Wave *wave) {
  * @param frame_count Number of frames to retrieve
  * @returns number of samples
 */
-size_t wave_get_samples(Wave *wave, size_t frame_index, uint8_t *buffer, size_t frame_count) {
+size_t wave_get_samples(Wave *wave, size_t frame_index, uint8_t *buffer, size_t frame_count)
+{
     if (strlen(wave->filepath) == 0)
         return 0;
 
     int bits_per_sample = wave_get_bits_per_sample(wave);
     int channels_number = wave_get_number_of_channels(wave);
 
-    // 1st complete index = ((bits_per_sample / 8) * channels_number) * frame_index
-    // last complete index = ((bits_per_sample / 8) * channels_number) * (frame_index + frame_counts - 1)
-
-    int frame_size = (bits_per_sample / 8) * channels_number; // Bytes per frame (1 Frame has [channels_number] Samples)
+    int frame_size = (bits_per_sample / 8) * channels_number; // Bytes per frame (1 Frame is [channels_number] Samples)
 
     // Both in Bytes
     const int startIndex = frame_index * frame_size;
     const int endIndex = ((frame_index + frame_count) * frame_size) - 1;
 
+    // If the frames requested are not in reach
     if (startIndex + frame_count > wave->data_size)
         return 0;
 
@@ -130,11 +135,12 @@ size_t wave_get_samples(Wave *wave, size_t frame_index, uint8_t *buffer, size_t 
 /* ----------------------------------- AUXILIARY FUNCTIONS ----------------------------------- */
 
 /**
-* Extract the "Subchunk2Size" field from the headers which represents the data size
+* Extract the "Subchunk2Size" field from the header which represents the data size
 * @param wave Pointer to the wave object
 * @returns wave file data field size
 */
-static int wave_get_data_size(Wave *wave) {
+static int wave_get_data_size(Wave *wave)
+{
     if (strlen(wave->filepath) == 0)
         return -1;
 
@@ -149,7 +155,8 @@ static int wave_get_data_size(Wave *wave) {
 * @param little_endian Indicates if the field is in little-endian format or big-endian format
 * @returns the header field asked in the position [0 + offset; 0 + offset + field_size]
 */
-static int wave_extract_header_field(Wave *wave, const int offset, const int field_size, const bool little_endian) {
+static int wave_extract_header_field(Wave *wave, const int offset, const int field_size, const bool little_endian)
+{
     uint8_t *buffer = (uint8_t *)malloc(field_size);
 
     wav_read_bytes(wave->filepath, offset, field_size, buffer);
@@ -168,15 +175,17 @@ static int wave_extract_header_field(Wave *wave, const int offset, const int fie
 * @param buffer Holds the bytes retrieved from the file
 * @returns number of bytes put inside the buffer
 */
-static size_t wav_read_bytes(const char* filename, size_t start, size_t block_size, uint8_t *buffer) {
+static size_t wav_read_bytes(const char *filename, size_t start, size_t block_size, uint8_t *buffer)
+{
     FILE *fp = fopen(filename, "r");
     int iterations = start;
     // Add [start] offset to file pointer (in Bytes)
-    while (iterations--) {
-        fread(buffer, 1, 1 , fp);
+    while (iterations--)
+    {
+        fread(buffer, 1, 1, fp);
     }
- 
-    fread(buffer, 1, block_size , fp);        
+
+    fread(buffer, 1, block_size, fp);
 
     fclose(fp);
     return block_size;
@@ -189,17 +198,25 @@ static size_t wav_read_bytes(const char* filename, size_t start, size_t block_si
 * @param littleEndian Indicates if the field is in little-endian format or big-endian format
 * @returns Value inside [value] converted to integer(2 Bytes(short int) or 4 Bytes(int))
 */
-static int ConvertToInt(uint8_t value[], int bytesNum, const bool littleEndian) {
-    if (littleEndian && bytesNum == 2) {
+static int ConvertToInt(uint8_t value[], int bytesNum, const bool littleEndian)
+{
+    if (littleEndian && bytesNum == 2)
+    {
         short newValue = value[0] | (value[1] << 8);
         return newValue;
-    } else if (littleEndian && bytesNum == 4) {
+    }
+    else if (littleEndian && bytesNum == 4)
+    {
         int newValue = (value[0] & 0xFF) | ((value[1] & 0xFF) << 8) | ((value[2] & 0xFF) << 16) | ((value[3] & 0xFF) << 24);
         return newValue;
-    } else if (!littleEndian && bytesNum == 2) {
+    }
+    else if (!littleEndian && bytesNum == 2)
+    {
         short newValue = value[1] | (value[0] << 8);
         return newValue;
-    } else if (!littleEndian && bytesNum == 4) {
+    }
+    else if (!littleEndian && bytesNum == 4)
+    {
         int newValue = (value[3] & 0xFF) | ((value[2] & 0xFF) << 8) | ((value[1] & 0xFF) << 16) | ((value[0] & 0xFF) << 24);
         return newValue;
     }
@@ -213,7 +230,8 @@ static int ConvertToInt(uint8_t value[], int bytesNum, const bool littleEndian) 
 * @param pattern Pointer to the pattern we wish to verify on the [string]
 * @returns 1 if pattern matches and 0 if not
 */
-static int regex_match(const char* string, const char* pattern) {
+static int regex_match(const char *string, const char *pattern)
+{
     regex_t regex;
     regcomp(&regex, pattern, 0);
     return !regexec(&regex, string, 0, NULL, 0);

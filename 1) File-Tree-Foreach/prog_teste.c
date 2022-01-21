@@ -18,7 +18,6 @@ static void saveFileName(const char *filename, void *context);
 static void sortFileNames(const char *context);
 static size_t arraySize();
 
-
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -50,25 +49,29 @@ static void saveFileName(const char *filename, void *context)
 
 /**
 * Sort File Names
-* Sort the names of the files found alphabetically
+* Sort the names of the files found alphabetically using BubbleSort
 * @param context The context in which the filenames were found
 */
 static void sortFileNames(const char *context)
 {
     size_t files_number = arraySize();
 
-    if (files_number == 0) {
+    if (files_number == 0)
+    {
         printf("| -- SEARCH RESULTS -- |\n\n-Results no: %ld\n-Sorted: alphabetically\n-Pattern: \"%s\"\n\n", files_number, context);
         return;
     }
-    
+
     // Sort the filenames using bubble sort
-    for (int i = 0; i < files_number; i++) {
-        for (int j = i+1; j < files_number; j++) {
-            if (strcmp(filenames[i], filenames[j]) > 0) {
-                char* temp = filenames[i]; 
-                filenames[i] = filenames[j]; 
-                filenames[j] = temp; 
+    for (int i = 0; i < files_number; i++)
+    {
+        for (int j = i + 1; j < files_number; j++)
+        {
+            if (strcmp(filenames[i], filenames[j]) > 0)
+            {
+                char *temp = filenames[i];
+                filenames[i] = filenames[j];
+                filenames[j] = temp;
             }
         }
     }
@@ -86,9 +89,11 @@ static void sortFileNames(const char *context)
 * Array Size
 * Returns the number of element inside the filenames array
 */
-static size_t arraySize() {
-  size_t items_num = 0;
-  for (; items_num < MAX_FILES ;items_num++)
-    if (*(filenames + items_num) == 0) return items_num;
-  return items_num;
+static size_t arraySize()
+{
+    size_t items_num = 0;
+    for (; items_num < MAX_FILES; items_num++)
+        if (*(filenames + items_num) == 0)
+            return items_num;
+    return items_num;
 }
